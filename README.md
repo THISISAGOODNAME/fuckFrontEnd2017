@@ -22,8 +22,16 @@ function fetchAndInstantiate(url, importObject) {
 
 [Wasm demo](http://aicdg.com/fuckFrontEnd2017/wasm/testWasm.html)
 
+[more demos](https://github.com/mdn/webassembly-examples)
+
 ## WebGPU(Only works on Safari Technology Preview)
+
+[https://webkit.org/demos/webgpu/](https://webkit.org/demos/webgpu/)
 
 ![HelloTriangle](webgpu/HelloTriangle/HelloTriangle.png)
 
-[HelloTriangle](http://aicdg.com/fuckFrontEnd2017/HelloTriangle/HelloTriangle.html)
+[HelloTriangle](http://aicdg.com/fuckFrontEnd2017/webgpu/HelloTriangle/HelloTriangle.html)
+
+![2D Effects](webgpu/2D/2DEffects.png)
+
+[2D Effects](http://aicdg.com/fuckFrontEnd2017/webgpu/2D/2D.html)
