@@ -37,4 +37,9 @@ function fetchAndInstantiate(url, importObject) {
 [2D Effects](http://aicdg.com/fuckFrontEnd2017/webgpu/2D/2D.html)
 
 ![Simple Cube](webgpu/SimpleCube/SimpleCube.png)
+
 [Simple Cube](http://aicdg.com/fuckFrontEnd2017/webgpu/SimpleCube/SimpleCube.html)
+
+![Cubes](webgpu/Cubes/Cubes.png)
+
+[Cubes](http://aicdg.com/fuckFrontEnd2017/webgpu/Cubes/Cubes.html)
