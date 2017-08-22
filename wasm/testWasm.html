@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>WasmTest</title>
+</head>
+<body>
+
+<div>
+    Please open dev-tool
+</div>
+
+<script src="wasm-utils.js"></script>
+<script>
+    fetchAndInstantiate('./add.wasm').then(function (instance) {
+        console.log(`1 + 2 = ${instance.exports.add(1, 2)}`);
+    })
+</script>
+
+</body>
+</html>
