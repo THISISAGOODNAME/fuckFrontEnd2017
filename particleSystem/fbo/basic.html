@@ -62,6 +62,7 @@ void main()
 <body>
 
 <script src="vendor/three.min.js"></script>
+<script src="fbo.js"></script>
 <script>
   var scene, camera, renderer;
 
@@ -81,23 +82,46 @@ void main()
     // width / height of the FBO
     var width  = 256;
     var height = 256;
+    var size = 256;
 
     // populate a Float32Array of random positions
-    var data = getRandomData(width, height, 256);
+    var data = getRandomData(width, height, size);
     var positions = new THREE.DataTexture( data, width, height, THREE.RGBFormat, THREE.FloatType );
     positions.needsUpdate = true;
 
-    // this will be used to update the particles' positions
+    //this will be used to update the particles' positions
+
     var simulationShader = new THREE.ShaderMaterial({
+      uniforms: {
+        positions: { type: "t", value: positions }
+      },
+      vertexShader: document.querySelector("#simulation_vs").text.trim(),
+      fragmentShader: document.querySelector("#simulation_fs").text.trim()
+    });
+
+
+    //this will be used to represent the particles on screen
+    //note that 'positions' is a texture that will be set and updated during the FBO.update() call
+    var renderShader = new THREE.ShaderMaterial( {
       uniforms: {
         positions: { type: "t", value: null },
         pointSize: { type: "f", value: 2 }
       },
-      vertexShader: ShaderLoader.get( "render_vs" ),
-      fragmentShader: ShaderLoader.get( "render_fs" ),
+      vertexShader: document.querySelector("#render_vs").text.trim(),
+      fragmentShader: document.querySelector("#render_fs").text.trim(),
       transparent: true,
       blending:THREE.AdditiveBlending
-    })
+    });
+
+    //init the FBO
+    FBO.init( width,height, renderer, simulationShader, renderShader );
+    scene.add( FBO.particles );
+
+    // WTF!!
+    window.addEventListener("resize", onResize);
+    onResize();
+    update();
+
   };
 
   //returns an array of random 3D coordinates
