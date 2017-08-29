@@ -86,8 +86,10 @@ void main()
   var scene, camera, renderer;
   var simulationShader, slider, automatic;
 
+  var start = (new Date()).valueOf();
+
   window.onload = function () {
-    slider = createSlider();
+//    slider = createSlider();
 
     var w = window.innerWidth;
     var h = window.innerHeight;
@@ -180,7 +182,8 @@ void main()
     FBO.update();
 
     //update params
-    simulationShader.uniforms.timer.value = parseFloat( slider.value );
+//    simulationShader.uniforms.timer.value = parseFloat( slider.value );
+    simulationShader.uniforms.timer.value = 0.5 * Math.sin( ((new Date()).valueOf() - start) / 1000 ) + 0.5;
     FBO.particles.rotation.x += Math.PI / 180 * .5;
     FBO.particles.rotation.y -= Math.PI / 180 * .5;
 
