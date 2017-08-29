@@ -114,7 +114,7 @@ void main()
     textureA.needsUpdate = true;
 
     //second model
-    var dataB = getSphere( width * height, size );
+    var dataB = getSphere( width * height, size / 2 );
     var textureB = new THREE.DataTexture( dataB, width, height, THREE.RGBFormat, THREE.FloatType, THREE.DEFAULT_MAPPING, THREE.RepeatWrapping, THREE.RepeatWrapping );
     textureB.needsUpdate = true;
 
