@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Morph a cube into a sphere</title>
+  <style>
+    body{
+      width:100%;
+      height:100%;
+      overflow: hidden;
+      top:0;
+      left:0;
+      margin:0;
+      padding:0;
+    }
+
+    #time
+    {
+      position: absolute;
+      top: 1em;
+      width:100%;
+      height: 32px;
+    }
+  </style>
+
+  <script id="simulation_vs" type="x-shader/x-vertex">
+varying vec2 vUv;
+void main() {
+    vUv = vec2(uv.x, uv.y);
+    gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+}
+  </script>
+
+  <script id="simulation_fs" type="x-shader/x-fragment">
+ uniform sampler2D textureA;
+ uniform sampler2D textureB;
+ uniform float timer;
+
+ varying vec2 vUv;
+ void main() {
+
+     //origin
+     vec3 origin  = texture2D( textureA, vUv ).xyz;
+
+     //destination
+     vec3 destination = texture2D( textureB, vUv ).xyz;
+
+     //lerp
+     vec3 pos = mix( origin, destination, timer );
+     gl_FragColor = vec4( pos,1.0 );
+
+ }
+  </script>
+
+  <script id="render_vs" type="x-shader/x-vertex">
+//float texture containing the positions of each particle
+uniform sampler2D positions;
+
+//size
+uniform float pointSize;
+
+void main() {
+
+    //the mesh is a nomrliazed square so the uvs = the xy positions of the vertices
+    vec3 pos = texture2D( positions, position.xy ).xyz;
+
+    //pos now contains the position of a point in space taht can be transformed
+    gl_Position = projectionMatrix * modelViewMatrix * vec4( pos, 1.0 );
+
+    gl_PointSize = pointSize;
+}
+  </script>
+
+  <script id="render_fs" type="x-shader/x-fragment">
+void main()
+{
+    gl_FragColor = vec4( vec3( 1. ), .25 );
+}
+  </script>
+</head>
+<body>
+
+<script src="vendor/three.min.js"></script>
+<script src="fbo.js"></script>
+<script>
+  var scene, camera, renderer;
+  var simulationShader, slider, automatic;
+
+  window.onload = function () {
+    slider = createSlider();
+
+    var w = window.innerWidth;
+    var h = window.innerHeight;
+
+    //regular scene creation
+    scene = new THREE.Scene();
+    camera = new THREE.PerspectiveCamera(60,w/h, 1,10000 );
+    camera.position.z = 500;
+
+    renderer = new THREE.WebGLRenderer();
+    renderer.setSize( w,h );
+    document.body.appendChild(renderer.domElement);
+
+    // width / height of the FBO
+    var width  = 256;
+    var height = 256;
+    var size = 256;
+
+    //first model
+    var dataA = getRandomData( width, height, size );
+    var textureA = new THREE.DataTexture( dataA, width, height, THREE.RGBFormat, THREE.FloatType, THREE.DEFAULT_MAPPING, THREE.RepeatWrapping, THREE.RepeatWrapping );
+    textureA.needsUpdate = true;
+
+    //second model
+    var dataB = getSphere( width * height, size );
+    var textureB = new THREE.DataTexture( dataB, width, height, THREE.RGBFormat, THREE.FloatType, THREE.DEFAULT_MAPPING, THREE.RepeatWrapping, THREE.RepeatWrapping );
+    textureB.needsUpdate = true;
+
+    //this will be used to update the particles' positions
+
+    simulationShader = new THREE.ShaderMaterial({
+      uniforms: {
+        textureA: { type: "t", value: textureA },
+        textureB: { type: "t", value: textureB },
+        timer: { type: "f", value:.5 }
+      },
+      vertexShader: document.querySelector("#simulation_vs").text.trim(),
+      fragmentShader: document.querySelector("#simulation_fs").text.trim()
+    });
+
+
+    //this will be used to represent the particles on screen
+    //note that 'positions' is a texture that will be set and updated during the FBO.update() call
+    var renderShader = new THREE.ShaderMaterial( {
+      uniforms: {
+        positions: { type: "t", value: null },
+        pointSize: { type: "f", value: 2 }
+      },
+      vertexShader: document.querySelector("#render_vs").text.trim(),
+      fragmentShader: document.querySelector("#render_fs").text.trim(),
+      transparent: true,
+      blending:THREE.AdditiveBlending
+    });
+
+    //init the FBO
+    FBO.init( width,height, renderer, simulationShader, renderShader );
+    scene.add( FBO.particles );
+
+    // WTF!!
+    window.addEventListener("resize", onResize);
+    onResize();
+    update();
+
+  };
+
+  //returns an array of random 3D coordinates
+  function getRandomData( width, height, size ){
+
+    var len = width * height * 3;
+    var data = new Float32Array( len );
+    while( len-- )data[len] = ( Math.random() -.5 ) * size ;
+    return data;
+  }
+
+  function onResize()
+  {
+    var w = window.innerWidth;
+    var h = window.innerHeight;
+    renderer.setSize(w,h);
+    camera.aspect = w/h;
+    camera.updateProjectionMatrix();
+  }
+
+  //update loop
+  function update()
+  {
+    requestAnimationFrame(update);
+
+    //update the simulation
+    FBO.update();
+
+    //update params
+    simulationShader.uniforms.timer.value = parseFloat( slider.value );
+    FBO.particles.rotation.x += Math.PI / 180 * .5;
+    FBO.particles.rotation.y -= Math.PI / 180 * .5;
+
+    //render the particles at the new location
+    renderer.render( scene, camera );
+
+  }
+
+  // create slider
+  function createSlider()
+  {
+    var slider = document.createElement("input");
+    slider.setAttribute( 'type', "range" );
+    slider.setAttribute( 'min', 0 );
+    slider.setAttribute( 'max', 1 );
+    slider.setAttribute( 'step',0.01 );
+
+    slider.style.position = "absolute";
+    slider.style.top = "0";
+    slider.style.width = "100%";
+    slider.style.zIndex = "1";
+    document.body.appendChild(slider);
+    return slider;
+  }
+
+  //returns a Float32Array buffer of spherical 3D points
+  function getPoint(v,size)
+  {
+    v.x = Math.random() * 2 - 1 ;
+    v.y = Math.random() * 2 - 1 ;
+    v.z = Math.random() * 2 - 1 ;
+    if(v.length()>1)return getPoint(v,size);
+    return v.normalize().multiplyScalar(size);
+  }
+
+  function getSphere( count, size ){
+
+    var len = count * 3;
+    var data = new Float32Array( len );
+    var p = new THREE.Vector3();
+    for( var i = 0; i < len; i+=3 )
+    {
+      getPoint( p, size );
+      data[ i     ] = p.x;
+      data[ i + 1 ] = p.y;
+      data[ i + 2 ] = p.z;
+    }
+    return data;
+  }
+</script>
+
+</body>
+</html>
