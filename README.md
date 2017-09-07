@@ -43,3 +43,9 @@ function fetchAndInstantiate(url, importObject) {
 ![Cubes](webgpu/Cubes/Cubes.png)
 
 [Cubes](http://aicdg.com/fuckFrontEnd2017/webgpu/Cubes/Cubes.html)
+
+## font rendering(power by opentype.js)
+
+![glyph-inspector](fontRendering/screenshot.png)
+
+[glyph-inspector](http://aicdg.com/fuckFrontEnd2017/fontRendering/glyph-inspector.html)
