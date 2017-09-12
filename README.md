@@ -49,3 +49,21 @@ function fetchAndInstantiate(url, importObject) {
 ![glyph-inspector](fontRendering/screenshot.png)
 
 [glyph-inspector](http://aicdg.com/fuckFrontEnd2017/fontRendering/glyph-inspector.html)
+
+## ES6 import in browser(chrome 61+, Firefox 54+, Edge 38+, Safari 10.1+)
+
+```html
+<script type="module" src="module.js"></script>
+<script type="module">
+  // or an inline script
+  import {helperMethod} from './providesHelperMethod.js';
+  helperMethod();
+</script>
+```
+
+```javascript
+// providesHelperMethod.js
+export function helperMethod() {
+  console.info(`I'm helping!`);
+}
+```
