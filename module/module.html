@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Module Test</title>
+</head>
+<body>
+
+<script type="module">
+  import Cacl from './cacl.js';
+  import addFunc from './func.js';
+
+  let caclInstance = new Cacl(10);
+  console.log(`caclInstance get num : ${caclInstance.num}`);
+  caclInstance.add(30);
+  caclInstance.times(2);
+  caclInstance.divides(5);
+  console.log(`caclInstance get num : ${caclInstance.num}`);
+
+  console.log(`addFunc 7 + 8 =  : ${addFunc(7, 8)}`);
+</script>
+
+</body>
+</html>
