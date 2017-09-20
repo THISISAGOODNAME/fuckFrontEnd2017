@@ -61,14 +61,6 @@ var Mesh = function (model, gl) {
       skinWeights.push(this.geometry.skinWeights[faces[i * 11 + 1 + j] * 2 + 1]);
       skinWeights.push(this.geometry.skinWeights[faces[i * 11 + 1 + j] * 2 + 2]);
       skinWeights.push(this.geometry.skinWeights[faces[i * 11 + 1 + j] * 2 + 3]);
-      // skinIndices.push(this.geometry.skinIndices[faces[i * 11 + 1 + j] * 4]);
-      // skinIndices.push(this.geometry.skinIndices[faces[i * 11 + 1 + j] * 4 + 1]);
-      // skinIndices.push(this.geometry.skinIndices[faces[i * 11 + 1 + j] * 4 + 2]);
-      // skinIndices.push(this.geometry.skinIndices[faces[i * 11 + 1 + j] * 4 + 3]);
-      // skinWeights.push(this.geometry.skinWeights[faces[i * 11 + 1 + j] * 4]);
-      // skinWeights.push(this.geometry.skinWeights[faces[i * 11 + 1 + j] * 4 + 1]);
-      // skinWeights.push(this.geometry.skinWeights[faces[i * 11 + 1 + j] * 4 + 2]);
-      // skinWeights.push(this.geometry.skinWeights[faces[i * 11 + 1 + j] * 4 + 3]);
     }
   }
 

@@ -18,6 +18,116 @@
     }
   </style>
 
+  <script type="x-shader/x-vertex" id="vertex">
+uniform mat4 uP, uM, uV;
+uniform mat4 uBones[32];
+
+attribute float aSample;
+attribute vec2 aTexture;
+attribute vec3 aVertex, aNormal;
+attribute highp vec4 aSWeights;
+attribute highp vec4 aSIndices;
+
+varying float vSample;
+varying vec2 vTexture;
+varying vec3 vVertex, vNormal;
+
+mat4 boneTransform() {
+  mat4 ret;
+
+  // 权重之和必须为1，需要先标准化
+  float normfac = 1.0 / (aSWeights.x + aSWeights.y + aSWeights.z + aSWeights.w);
+  ret = normfac * aSWeights.x * uBones[int(aSIndices.x)]
+      + normfac * aSWeights.y * uBones[int(aSIndices.y)]
+      + normfac * aSWeights.z * uBones[int(aSIndices.z)]
+      + normfac * aSWeights.w * uBones[int(aSIndices.w)];
+
+  return ret;
+}
+
+void main() {
+
+  mat4 bt = boneTransform();
+
+  // uMVP =  uP * uV * uM
+  // bt - 基于骨骼的位置转换
+
+  gl_Position = uP * uV * uM * bt * vec4(aVertex, 1.0);
+  vVertex = (bt * vec4(aVertex, 1.0)).xyz;
+  vNormal = (bt * vec4(aNormal, 0.0)).xyz;
+  vTexture = aTexture;
+  vSample = aSample;
+
+}
+  </script>
+
+  <script type="x-shader/x-fragment" id="fragment">
+precision highp float;
+
+uniform mat3 uN;
+uniform mat4 uM, uV;
+uniform sampler2D uSample[4];
+uniform vec3 uLightPos;
+
+varying float vSample;
+varying vec2 vTexture;
+varying vec3 vVertex, vNormal;
+
+// MSAA X4
+vec4 getColor() {
+    int index = int(vSample);
+    vec2 uv = vec2(vTexture.s, vTexture.t);
+    vec4 color;
+
+    if (index == 0) {
+        color = texture2D(uSample[0], uv);
+    } else if (index == 1) {
+        color = texture2D(uSample[1], uv);
+    } else if (index == 2) {
+        color = texture2D(uSample[2], uv);
+    } else if (index == 3) {
+        color = texture2D(uSample[3], uv);
+    } else {
+        color = vec4(0, 0, 0, 0);
+    }
+
+    return color;
+}
+
+void main() {
+
+  vec3 lAmbient = vec3(0.3, 0.3, 1.0);
+  vec3 lDiffuse = vec3(0.3, 0.3, 1.0);
+  vec3 lSpecular= vec3(1.0, 1.0, 1.0);
+
+  // 通过相机坐标计算光的方向
+  vec3 plDir = normalize(vec3(uV * uM * vec4(uLightPos, 1.0))
+      - vec3(uV * uM * vec4(vVertex, 1.0)));
+
+  vec3 n = normalize(uN * vNormal);
+  vec3 l = normalize(plDir);
+  vec3 v = normalize(-vVertex);
+  vec3 r = reflect(l, n);
+
+  vec4 tColor = getColor();
+
+  float lambert = dot(l, n),
+        ambientInt = 2.0,
+        specularInt = 1.0,
+        diffuseInt = 1.0,
+        shininess = 256.0;
+
+  float specular = pow(max(0.0, dot(r,v)), shininess);
+
+  gl_FragColor = vec4(
+      tColor.rgb *
+      (lAmbient * ambientInt +
+      lDiffuse * diffuseInt * lambert +
+      lSpecular * specularInt * specular)
+      , tColor.a);
+}
+  </script>
+
   <script src="gl-matrix.js"></script>
   <script src="mesh.js"></script>
 </head>
@@ -26,7 +136,212 @@
 
 <canvas id="canvas"></canvas>
 
-<script src="main.js"></script>
+<script>
+  "use strict";
+  window.onload = function () {
+
+    var attribList = ['aVertex', 'aNormal', 'aTexture', 'aSWeights', 'aSIndices', 'aSample'];
+    var uniformList = ['uP', 'uV', 'uM', 'uN', 'uBones', 'uSample', 'uLightPos'];
+
+    // 初始化 WebGL上 下文
+    var gl = (function () {
+
+      var canvas = document.getElementById('canvas');
+      var gl = canvas.getContext('webgl') ||
+        canvas.getContext('experimental-webgl') ||
+        console.log('WebGL在当前浏览器上不受支持!');
+
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+
+      gl.viewport(0, 0, canvas.width, canvas.height);
+
+      // rezie事件
+      window.addEventListener('resize', function () {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        gl.viewport(0, 0, canvas.width, canvas.height);
+      });
+
+      return gl;
+
+    }());
+
+    // 编译着色器
+    var program = (function (gl, attribs, uniforms) {
+
+      var compileShader = function (id, type) {
+        var shaderSource = document.getElementById(id).text.trim();
+
+        var shader = gl.createShader(type);
+        gl.shaderSource(shader, shaderSource);
+        gl.compileShader(shader);
+
+        return shader;
+      };
+
+      var program = gl.createProgram();
+      gl.attachShader(program, compileShader('vertex', gl.VERTEX_SHADER));
+      gl.attachShader(program, compileShader('fragment', gl.FRAGMENT_SHADER));
+
+      gl.linkProgram(program);
+      gl.useProgram(program);
+
+      for (var i in attribs)
+        program[attribs[i]] = gl.getAttribLocation(program, attribs[i]);
+
+      for (var i in uniforms)
+        program[uniforms[i]] = gl.getUniformLocation(program, uniforms[i]);
+
+      return program;
+
+    }(gl, attribList, uniformList));
+
+
+
+    // 黑色背景
+    gl.clearColor(0.0, 0.0, 0.0, 1.0);
+    // 开启深度测试
+    gl.enable(gl.DEPTH_TEST);
+
+    // 创建mesh的实例
+    var mesh = new Mesh((function () {
+
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', 'model.json', false);
+      xhr.send();
+
+      var data = JSON.parse(xhr.responseText);
+
+      // 根据需求调整模型数据结构(同时删除额外的数据)
+      var model = {
+        geometry: {
+          uvs: data.uvs[0],
+          faces: data.faces,
+          skinIndices: data.skinIndices,
+          skinWeights: data.skinWeights,
+          vertices: data.vertices,
+          normals: data.normals,
+          bones: []
+        },
+        materials: [],
+        keyframes: []
+      };
+
+      for (var i = 0; i < data.materials.length; i++)
+        model.materials[i] = {texture: 'samples/' + data.materials[i].mapDiffuse};
+
+      for (var i = 0; i < data.bones.length; i++) {
+        model.geometry.bones[i] = {
+          parent: data.bones[i].parent,
+          pos: data.bones[i].pos,
+          rot: data.bones[i].rotq
+        };
+      }
+
+      // 遍历骨骼树..
+      for (var i = 0, bones = data.animations[0].hierarchy; i < bones.length; i++) {
+        for (var j = 0; j < bones[i].keys.length; j++) {
+          if (!model.keyframes[j]) model.keyframes[j] = [];
+          model.keyframes[j][i] = {pos: bones[i].keys[j].pos, rot: bones[i].keys[j].rot};
+        }
+      }
+
+      // 初始的模型矩阵
+      model.geometry.position = [0, -5, 0];
+      model.geometry.rotate = [0, 0, 0];
+      model.geometry.scale = [1, 1, 1];
+
+      return model;
+
+    }()), gl);
+
+    var moving = false;
+
+    // 键鼠输入相关
+    (function () {
+      var capture = false, lastX, lastY;
+
+      // 用鼠标控制视图矩阵
+      document.addEventListener('mousedown', function (event) {
+        if (event.which === 1)
+          capture = true;
+        lastX = event.pageX;
+        lastY = event.pageY;
+      });
+
+      document.addEventListener('mousemove', function (event) {
+        if (capture) {
+          var deltaX = event.pageX - lastX;
+          var deltaY = event.pageY - lastY;
+
+          lastX = event.pageX;
+          lastY = event.pageY;
+          orbitX += deltaY * 0.005;
+          orbitY += deltaX * 0.005;
+        }
+      });
+
+      document.addEventListener('mouseup', function () {
+        capture = false;
+      });
+
+      document.addEventListener('wheel', function (event) {
+        distance += event.deltaY * 0.005;
+      });
+
+      // 空格控制动画开始和暂停
+      document.addEventListener('keydown', function (event) {
+        switch (event.code) {
+          case 'Space':
+            moving = !moving;
+            break;
+          default:
+            break;
+        }
+      });
+    }());
+
+    var uP = mat4.create(), distance = 30, orbitX = 0, orbitY = 0;
+
+    // 创建MVP矩阵
+    mat4.perspective(uP, 45 / 180 * Math.PI,
+      window.innerWidth / window.innerHeight, 0.01, 500.0);
+
+    (function animate(time) {
+
+      var delta = time - (animate.timeOld || time);
+
+      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+      // 透视矩阵
+      gl.uniformMatrix4fv(program.uP, false, uP);
+
+      // 观察矩阵
+      var uV = mat4.create();
+      mat4.identity(uV);
+      mat4.rotate(uV, uV, orbitX, [1.0, 0.0, 0.0]);
+      mat4.rotate(uV, uV, orbitY, [0.0, 1.0, 0.0]);
+      mat4.translate(uV, uV, [0, 0, -distance]);
+      gl.uniformMatrix4fv(program.uV, false, uV);
+
+      // 调整光源位置
+      gl.uniform3f(program.uLightPos, 0, -10, distance);
+
+      mesh.draw(gl, program);
+
+      if (moving)
+        mesh.curLerp += 0.005 * delta;
+
+      animate.timeOld = time;
+
+      requestAnimationFrame(animate);
+
+    }(0));
+
+  }
+
+</script>
 
 </body>
 
